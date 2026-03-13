@@ -42,10 +42,19 @@ android {
     testOptions {
         managedDevices {
             localDevices {
-                create("pixel7api34") {
+                create("pixel7api34X86") {
                     device = "Pixel 7"
                     apiLevel = 34
                     systemImageSource = "aosp-atd"
+                    require64Bit = true
+                    testedAbi = "x86_64"
+                }
+                create("pixel7api34Arm64") {
+                    device = "Pixel 7"
+                    apiLevel = 34
+                    systemImageSource = "aosp-atd"
+                    require64Bit = true
+                    testedAbi = "arm64-v8a"
                 }
             }
         }
