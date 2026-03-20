@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.1.0"
 kotlin = "2.3.20"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -34,7 +34,6 @@ material = { group = "com.google.android.material", name = "material", version.r
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

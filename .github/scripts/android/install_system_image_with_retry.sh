@@ -37,7 +37,6 @@ if [[ -z "$sdkmanager_bin" ]]; then
   echo "sdkmanager executable was not found"
   exit 1
 fi
-
 cleanup_partial_downloads() {
   rm -rf "$HOME/.android/cache"/* || true
   rm -rf "$sdk_root"/.android/cache/* || true
