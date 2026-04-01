@@ -1,0 +1,237 @@
+package com.itlab.domain
+
+import com.itlab.domain.ai.NoteAiService
+import com.itlab.domain.aiusecase.ApplySummaryUseCase
+import com.itlab.domain.aiusecase.ApplyTagsUseCase
+import com.itlab.domain.aiusecase.SuggestSummaryUseCase
+import com.itlab.domain.aiusecase.SuggestTagsUseCase
+import com.itlab.domain.model.ContentItem
+import com.itlab.domain.model.ImageSource
+import com.itlab.domain.model.Note
+import com.itlab.domain.repository.NotesRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
+import org.junit.Test
+
+class AIUseCasesTest {
+    private class FakeNotesRepo : NotesRepository {
+        private val store = mutableMapOf<String, Note>()
+        private val flow = MutableStateFlow<List<Note>>(emptyList())
+
+        override fun observeNotes(): Flow<List<Note>> = flow
+
+        override fun observeNotesByFolder(folderId: String): Flow<List<Note>> =
+            flow.map { notes ->
+                notes.filter { it.folderId == folderId }
+            }
+
+        override suspend fun getNoteById(id: String): Note? = store[id]
+
+        override suspend fun createNote(note: Note): String {
+            store[note.id] = note
+            flow.value = store.values.toList()
+            return note.id
+        }
+
+        override suspend fun updateNote(note: Note) {
+            store[note.id] = note
+            flow.value = store.values.toList()
+        }
+
+        override suspend fun deleteNote(id: String) {
+            store.remove(id)
+            flow.value = store.values.toList()
+        }
+    }
+
+    private class FakeNoteAiService : NoteAiService {
+        var summaryInput: String? = null
+        var textTagsInput: String? = null
+        var imageTagsInput: List<String> = emptyList()
+
+        var summaryResult: String = "AI summary"
+        var textTagsResult: Set<String> = setOf("text-tag-1", "text-tag-2")
+        var imageTagsResult: Set<String> = setOf("image-tag-1", "image-tag-2")
+
+        override suspend fun summarize(text: String): String {
+            summaryInput = text
+            return summaryResult
+        }
+
+        override suspend fun tagIMGs(img: List<String>): Set<String> {
+            imageTagsInput = img
+            return imageTagsResult
+        }
+
+        override suspend fun tagTXT(text: String): Set<String> {
+            textTagsInput = text
+            return textTagsResult
+        }
+    }
+
+    @Test
+    fun suggestSummary_returnsDataAndSendsJoinedTextToAi() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val ai = FakeNoteAiService()
+            val useCase = SuggestSummaryUseCase(ai, repo)
+
+            val note =
+                Note(
+                    id = "n1",
+                    title = "Test",
+                    contentItems =
+                        listOf(
+                            ContentItem.Text("Hello"),
+                            ContentItem.Image(ImageSource.Local("path/to/img")),
+                        ),
+                )
+            repo.createNote(note)
+
+            val result = useCase("n1")
+
+            assertEquals("AI summary", result)
+            assertEquals("Hello", ai.summaryInput)
+        }
+
+    @Test
+    fun suggestSummary_throwsIfNoteNotFound() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val ai = FakeNoteAiService()
+            val useCase = SuggestSummaryUseCase(ai, repo)
+
+            try {
+                useCase("missing_id")
+                fail("Expected IllegalArgumentException")
+            } catch (e: IllegalArgumentException) {
+                assertEquals("Note not found: missing_id", e.message)
+            }
+        }
+
+    @Test
+    fun suggestTags_returnsMergedTags_andSendsTextAndImagesToAi() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val ai = FakeNoteAiService()
+            val useCase = SuggestTagsUseCase(ai, repo)
+
+            val note =
+                Note(
+                    id = "n2",
+                    title = "Tags",
+                    contentItems =
+                        listOf(
+                            ContentItem.Text("First line"),
+                            ContentItem.Text("Second line"),
+                            ContentItem.Image(ImageSource.Local("/local/image.png")),
+                            ContentItem.Image(ImageSource.Remote("https://example.com/image.jpg")),
+                            ContentItem.Link("https://kotlinlang.org"),
+                        ),
+                )
+            repo.createNote(note)
+
+            val result = useCase("n2")
+
+            assertEquals("First line\nSecond line", ai.textTagsInput)
+            assertEquals(
+                listOf("/local/image.png", "https://example.com/image.jpg"),
+                ai.imageTagsInput,
+            )
+            assertEquals(
+                setOf("text-tag-1", "text-tag-2", "image-tag-1", "image-tag-2"),
+                result,
+            )
+        }
+
+    @Test
+    fun suggestTags_throwsIfNoteNotFound() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val ai = FakeNoteAiService()
+            val useCase = SuggestTagsUseCase(ai, repo)
+
+            try {
+                useCase("missing_id")
+                fail("Expected IllegalArgumentException")
+            } catch (e: IllegalArgumentException) {
+                assertEquals("Note not found: missing_id", e.message)
+            }
+        }
+
+    @Test
+    fun applySummary_updatesNoteSummary() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val useCase = ApplySummaryUseCase(repo)
+
+            val note =
+                Note(
+                    id = "n3",
+                    title = "Summary",
+                    summary = "old summary",
+                )
+            repo.createNote(note)
+
+            useCase("n3", "new summary")
+
+            val updated = repo.getNoteById("n3")
+
+            assertEquals("new summary", updated?.summary)
+        }
+
+    @Test
+    fun applySummary_throwsIfNoteNotFound() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val useCase = ApplySummaryUseCase(repo)
+
+            try {
+                useCase("missing_id", "new summary")
+                fail("Expected IllegalArgumentException")
+            } catch (e: IllegalArgumentException) {
+                assertEquals("Note not found", e.message)
+            }
+        }
+
+    @Test
+    fun applyTags_updatesNoteTags() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val useCase = ApplyTagsUseCase(repo)
+
+            val note =
+                Note(
+                    id = "n4",
+                    title = "Tags",
+                    tags = setOf("old"),
+                )
+            repo.createNote(note)
+
+            val newTags = setOf("kotlin", "android", "openvino")
+
+            useCase("n4", newTags)
+
+            val updated = repo.getNoteById("n4")
+
+            assertEquals(newTags, updated?.tags)
+        }
+
+    @Test
+    fun applyTags_throwsIfNoteNotFound() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val useCase = ApplyTagsUseCase(repo)
+
+            try {
+                useCase("missing_id", setOf("tag"))
+                fail("Expected IllegalArgumentException")
+            } catch (e: IllegalArgumentException) {
+                assertEquals("Note not found", e.message)
+            }
+        }
+}

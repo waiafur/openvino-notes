@@ -1,0 +1,44 @@
+package com.itlab.domain
+
+import com.itlab.domain.model.ContentItem
+import com.itlab.domain.model.ImageSource
+import com.itlab.domain.model.Note
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class NoteTest {
+    @Test
+    fun note_creation() {
+        val note = Note(title = "Hello")
+
+        assertEquals("Hello", note.title)
+        assertTrue(note.contentItems.isEmpty())
+    }
+
+    @Test
+    fun note_copy() {
+        val note = Note(title = "A")
+
+        val updated = note.copy(title = "B")
+
+        assertEquals("A", note.title)
+        assertEquals("B", updated.title)
+    }
+
+    @Test
+    fun content_items_types() {
+        val items =
+            listOf(
+                ContentItem.Text("text"),
+                ContentItem.Image(ImageSource.Local("path")),
+                ContentItem.Link("url"),
+                ContentItem.File("uri", "type", "name"),
+            )
+
+        assertTrue(items[0] is ContentItem.Text)
+        assertTrue(items[1] is ContentItem.Image)
+        assertTrue(items[2] is ContentItem.Link)
+        assertTrue(items[3] is ContentItem.File)
+    }
+}
