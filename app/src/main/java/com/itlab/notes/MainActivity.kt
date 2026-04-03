@@ -4,13 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.itlab.notes.ui.notesApp
 import com.itlab.notes.ui.theme.notesTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,32 +13,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             notesTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                }
+                notesApp()
             }
         }
-    }
-}
-
-@Composable
-fun greeting(
-    name: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier,
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun greetingPreview() {
-    notesTheme {
-        greeting("Android")
     }
 }
