@@ -2,7 +2,7 @@
 
 # OpenVINO Notes
 
-OpenVINO notes is an AI-powered notes app for Android. 
+OpenVINO notes is an AI-powered notes app for Android.
 
 The project is written in **Kotlin** and uses **OpenVINO** to run AI features directly on Android devices.
 
@@ -14,7 +14,8 @@ Build a lightweight Android notes application with on-device AI for fast, privat
 ### Prerequisites
 * Android Studio (Ladybug+)
 * JDK 17
-* Android SDK 34
+* Android SDK 37
+* A connected Android device or a running emulator for install tasks
 
 ### Terminal Instructions
 
@@ -24,8 +25,10 @@ git clone https://github.com/IntFxZen/openvino-notes.git
 2. Build the project:
 ./gradlew assembleDebug
 
-3. Install on device:
+3. Start an emulator or connect a device, then install the debug build:
 ./gradlew installDebug
+
+For a validated terminal-based emulator flow on, see [`docs/developer/ci-local.md`](./docs/developer/ci-local.md).
 
 ## 🏗 Architecture & Tech Stack
 
