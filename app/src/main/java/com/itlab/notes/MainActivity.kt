@@ -10,7 +10,7 @@ import com.itlab.notes.ui.theme.notesTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        OpenVINOTest.testVersion()
+        OpenVINOTest.OpenVINOTest(this)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {

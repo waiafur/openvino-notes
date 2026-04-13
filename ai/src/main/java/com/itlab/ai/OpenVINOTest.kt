@@ -1,16 +1,18 @@
 package com.itlab.ai
 
+import android.annotation.SuppressLint
+import android.content.ContentValues
+
 import android.util.Log
 import org.openvino.java.OpenVINO
 import org.openvino.java.core.Core
-import org.openvino.java.core.Model
-import org.openvino.java.core.CompiledModel
-import org.openvino.java.core.InferRequest
-import org.openvino.java.core.Tensor
 import java.io.File
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import com.sun.jna.Native
+import com.sun.jna.ptr.PointerByReference
+import testDirectCoreCreate
+import java.io.FileOutputStream
+
 
 // TODO
 // 1. Сделать сэмпл моделей в этом тесте
@@ -22,16 +24,24 @@ import android.graphics.BitmapFactory
 object OpenVINOTest {
 
     private const val TAG = "OpenVINOTest"
+    fun OpenVINOTest(context: Context) {
+        testVersion(context)
+        testCoreAPI(context)
+        testTensorCreation(context)
+        testModelLoading(context, "resnet50-v2-7.xml")
+        inspectAPI()
+        testDevices(context)
+        testDirectCoreCreate(context)
+        checkSymbols(context)
+    }
 
-    fun testVersion() {
+    // --- Тест версии (работает) ---
+    fun testVersion(context: Context) {
         try {
-            // 1. Загружаем библиотеку OpenVINO
-            // Если ваша .so библиотека лежит в стандартном пути (src/main/jniLibs/arm64-v8a/),
-            // то метод load() без аргументов должен её найти.
+            System.setProperty("jna.library.path", context.applicationInfo.nativeLibraryDir)
             val vino = OpenVINO.load()
             Log.d(TAG, "OpenVINO library loaded successfully!")
 
-            // 2. Получаем и выводим версию
             val version = vino.version
             Log.i(TAG, "---- OpenVINO INFO ----")
             Log.i(TAG, "Description: ${version.description}")
@@ -42,138 +52,196 @@ object OpenVINOTest {
         }
     }
 
-    // ========== RESNET50 ПОЛНЫЙ ТЕСТ (из ResNetDetection.java) ==========
-    
-    fun testResNet50(context: Context) {
+    fun inspectAPI() {
         try {
-            Log.i(TAG, "=== RESNET50 ПОЛНЫЙ ТЕСТ ===")
-            
-            // 1. Загружаем OpenVINO
+            val vino = OpenVINO.load()
             val core = Core()
-            
-            // 2. Копируем модель из assets во временную папку
-            val modelFile = copyAssetToFile(context, "models/resnet50-v2-7/resnet50-v2-7.xml")
-            val modelBin = copyAssetToFile(context, "models/resnet50-v2-7/resnet50-v2-7.bin")
-            
-            Log.i(TAG, "Модель скопирована: ${modelFile.absolutePath}")
-            
-            // 3. Загружаем модель
-            val ovModel = core.readModel(modelFile.absolutePath)
-            Log.i(TAG, "✅ Модель загружена")
-            
-            // 4. Получаем имена входов и выходов
-            val inputName = (ovModel.inputs().get(0) as org.openvino.java.core.Input).anyName
-            val outputName = (ovModel.outputs().get(0) as org.openvino.java.core.Output).anyName
-            Log.i(TAG, "Вход: $inputName, Выход: $outputName")
-            
-            // 5. Компилируем для CPU
-            val compiledModel = core.compileModel(ovModel, "CPU")
-            Log.i(TAG, "✅ Модель скомпилирована для CPU")
-            
-            // 6. Создаем тестовое изображение (224x224 белое с черным квадратом)
-            val size = 224
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            for (y in 0 until size) {
-                for (x in 0 until size) {
-                    val color = if (x in 50..174 && y in 50..174) {
-                        android.graphics.Color.BLACK
-                    } else {
-                        android.graphics.Color.WHITE
-                    }
-                    bitmap.setPixel(x, y, color)
-                }
+
+            Log.d(TAG, "=== Core methods ===")
+            core.javaClass.methods.forEach { method ->
+                Log.d(TAG, "  ${method.name} (${method.parameterTypes.joinToString { it.simpleName }})")
             }
-            
-            // 7. Преобразуем изображение в float массив (BGR формат)
-            val inputData = preprocessBitmap(bitmap, size, size)
-            Log.i(TAG, "Подготовлены данные: ${inputData.size} элементов")
-            
-            // 8. Создаем запрос и заполняем тензор
-            val request = compiledModel.createInferRequest()
-            val inputTensor = request.getTensor(inputName)
-            inputTensor.setData(inputData)
-            Log.i(TAG, "✅ Тензор заполнен")
-            
-            // 9. Инференс
-            Log.i(TAG, "🔄 Запуск инференса...")
-            val start = System.currentTimeMillis()
-            request.infer()
-            val time = System.currentTimeMillis() - start
-            Log.i(TAG, "✅ Инференс выполнен за ${time} мс")
-            
-            // 10. Получаем результат
-            val outputTensor = request.getTensor(outputName)
-            val outputData = getTensorData(outputTensor)
-            
-            if (outputData != null && outputData.isNotEmpty()) {
-                Log.i(TAG, "Размер выхода: ${outputData.size}")
-                
-                // Топ-5 предсказаний
-                val indices = outputData.indices.sortedByDescending { outputData[it] }.take(5)
-                Log.i(TAG, "Топ-5 предсказаний:")
-                indices.forEachIndexed { i, idx ->
-                    Log.i(TAG, "  ${i+1}. класс $idx: ${String.format("%.4f", outputData[idx])}")
-                }
-            }
-            
+
+            // Попробуем создать тензор
+            Log.d(TAG, "=== Tensor methods ===")
+            val shape = arrayOf(1L, 3L, 224L, 224L)
+            // Здесь нужно подобрать правильный способ создания тензора
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Inspect failed", e)
+        }
+    }
+    // --- Тест Core API ---
+    @SuppressLint("UnsafeDynamicallyLoadedCode")
+    fun testCoreAPI(context: Context) {
+        System.setProperty("OPENVINO_LOG_LEVEL", "DEBUG")
+        System.setProperty("OPENVINO_LOG_LEVEL", "0") // "0" это уровень DEBUG
+        try {
+            val apkPath = context.packageCodePath
+            val nativeLibDir = apkPath + "!/lib/arm64-v8a"
+            val opencvPath = "${context.applicationInfo.sourceDir}!/lib/arm64-v8a/libopencv_java4.so"
+            //System.load(opencvPath)
+            Log.d(TAG, "Native lib dir: $nativeLibDir")
+
+            // 2. Проверяем, есть ли файл (опционально, для отладки)
+            val opencvFile = File("$nativeLibDir/libopencv_java4.so")
+            Log.d(TAG, "OpenCV file exists: ${opencvFile.exists()}")
+
+            // 3. Устанавливаем путь для JNA
+            System.setProperty("jna.library.path", nativeLibDir)
+
+            // 4. Загружаем OpenVINO
+            val vino = OpenVINO.load()
+            Log.d(TAG, "OpenVINO loaded")
+
+            // 5. Загружаем OpenCV (передаём папку)
+            OpenVINO.loadCvDll(nativeLibDir)
+            Log.d(TAG, "OpenCV loaded")
+
+            // 6. Создаём Core
+            val core = Core("")
+            Log.d(TAG, "Core created successfully!")
+
             core.free()
-            Log.i(TAG, "=== RESNET50 ТЕСТ ЗАВЕРШЕН ===")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ ResNet50 тест failed!", e)
-        }
-    }
-    
-    private fun preprocessBitmap(bitmap: Bitmap, w: Int, h: Int): FloatArray {
-        // Ресайзим до 224x224
-        val resized = Bitmap.createScaledBitmap(bitmap, w, h, true)
-        
-        val data = FloatArray(3 * w * h)
-        val pixels = IntArray(w * h)
-        resized.getPixels(pixels, 0, w, 0, 0, w, h)
-        
-        for (y in 0 until h) {
-            for (x in 0 until w) {
-                val pixel = pixels[y * w + x]
-                val r = ((pixel shr 16) and 0xFF) / 255.0f
-                val g = ((pixel shr 8) and 0xFF) / 255.0f
-                val b = (pixel and 0xFF) / 255.0f
-                
-                // ResNet50 ожидает BGR порядок
-                data[y * w + x] = b
-                data[h * w + y * w + x] = g
-                data[2 * h * w + y * w + x] = r
-            }
-        }
-        return data
-    }
-    
-    private fun getTensorData(tensor: Tensor): FloatArray? {
-        return try {
-            val method = Tensor::class.java.getDeclaredMethod("getDataAsFloatArray")
-            method.isAccessible = true
-            method.invoke(tensor) as FloatArray
-        } catch (e: Exception) {
+
+        } catch (e1: Exception) {
+            Log.e(TAG, "Standard Core creation failed", e1)
+
+            // Вариант 2: если есть конструктор с параметрами
             try {
-                val method = Tensor::class.java.getDeclaredMethod("getData", Class::class.java)
-                method.isAccessible = true
-                method.invoke(tensor, FloatArray::class.java) as FloatArray
+                Log.d(TAG, "Trying alternative approach...")
+                val nativeLibDir = context.applicationInfo.nativeLibraryDir
+                val pluginsPath = "$nativeLibDir/plugins.xml"
+                // Некоторые версии OpenVINO требуют путь к plugins.xml
+                 val core = Core(pluginsPath)
+
             } catch (e2: Exception) {
-                Log.e(TAG, "Не удалось получить данные тензора", e2)
-                null
+                Log.e(TAG, "Alternative also failed", e2)
             }
         }
     }
-    
-    private fun copyAssetToFile(context: Context, assetPath: String): File {
-        val destFile = File(context.cacheDir, assetPath.substringAfterLast("/"))
-        if (!destFile.exists()) {
-            context.assets.open(assetPath).use { input ->
-                destFile.outputStream().use { output ->
-                    input.copyTo(output)
+    fun testDevices(context: Context) {
+        try {
+            val nativeLibDir = context.applicationInfo.nativeLibraryDir
+            val core = Core("$nativeLibDir/plugins.xml")
+            val devices = core.availableDevices
+            Log.d(TAG, "Devices: ${devices.joinToString()}")
+            core.free()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed: ${e.message}")
+        }
+    }
+
+    // --- Тест создания тензора ---
+    fun testTensorCreation(context: Context) {
+        try {
+            System.setProperty("jna.library.path", context.applicationInfo.nativeLibraryDir)
+            val vino = OpenVINO.load()
+
+            // Пробуем разные способы создания тензора
+            // Вариант 1: через массив Long
+            val dimensions = longArrayOf(1, 3, 224, 224)
+
+            // Вариант 2: через IntArray
+            val intDims = intArrayOf(1, 3, 224, 224)
+
+            Log.d(TAG, "Trying to create tensor...")
+
+            // Здесь нужно подобрать правильный конструктор
+            // Возможно, тензор создаётся через Core, а не напрямую
+
+            Log.i(TAG, "Tensor test completed")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Tensor test failed!", e)
+        }
+    }
+
+    // --- Копирование файла из assets ---
+    private fun copyFileFromAssets(context: Context, fileName: String): String? {
+        return try {
+            val destFile = File(context.cacheDir, fileName)
+            if (destFile.exists()) {
+                destFile.delete()
+            }
+            context.assets.open(fileName).use { inputStream ->
+                FileOutputStream(destFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
                 }
             }
+            destFile.absolutePath
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to copy file: $fileName", e)
+            null
         }
-        return destFile
     }
+
+    // --- Загрузка модели (если есть файл) ---
+    fun testModelLoading(context: Context, modelFileName: String) {
+        try {
+            System.setProperty("jna.library.path", context.applicationInfo.nativeLibraryDir)
+            val vino = OpenVINO.load()
+            val core = Core()
+
+            val modelPath = copyFileFromAssets(context, modelFileName)
+            if (modelPath == null) {
+                Log.e(TAG, "Failed to copy model")
+                return
+            }
+
+            // Пробуем загрузить модель
+            Log.d(TAG, "Loading model from: $modelPath")
+            val model = core.readModel(modelPath)
+            Log.d(TAG, "Model loaded: ${model}")
+
+            // Выводим информацию о модели
+            Log.d(TAG, "Model class: ${model.javaClass.name}")
+            model.javaClass.declaredMethods.forEach { method ->
+                Log.d(TAG, "  Model method: ${method.name}")
+            }
+
+            core.free()
+            Log.i(TAG, "Model loading test completed")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Model loading failed!", e)
+        }
+    }
+    interface OpenVINOTestNative : com.sun.jna.Library {
+        fun ov_core_create(core: PointerByReference): Int
+    }
+    @SuppressLint("UnsafeDynamicallyLoadedCode")
+    fun checkSymbols(context: Context) {
+        try {
+            // Загружаем библиотеку по полному пути из APK
+            val apkPath = context.packageCodePath
+            val libPath = "$apkPath!/lib/arm64-v8a/libopenvino_c.so"
+
+            Log.d(TAG, "Loading library from: $libPath")
+            System.load(libPath)
+            Log.d(TAG, "Library loaded successfully")
+
+            // Теперь загружаем интерфейс
+            val native = Native.load("openvino_c", OpenVINOTestNative::class.java)
+            Log.d(TAG, "Native interface loaded, calling ov_core_create...")
+
+            val corePtr = PointerByReference()
+            val status = native.ov_core_create(corePtr)
+
+            Log.d(TAG, "ov_core_create status: $status")
+
+            if (status == 0 && corePtr.value != null) {
+                Log.d(TAG, "✅ Core created! Pointer: ${corePtr.value}")
+            } else {
+                Log.e(TAG, "❌ ov_core_create failed with status: $status")
+            }
+
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "UnsatisfiedLinkError: ${e.message}", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception: ${e.message}", e)
+        }
+    }
+
 }
+

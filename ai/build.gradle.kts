@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.gradle.api.file.RelativePath
 
 plugins {
     alias(libs.plugins.android.library)
@@ -98,6 +97,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(project(":domain"))
+    implementation(libs.androidx.monitor)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -107,10 +107,37 @@ dependencies {
             type = "aar"
         }
     }
-    implementation(libs.opencv.android) {
-        artifact {
-            classifier = "android-arm64"
+    //implementation(libs.opencv.android) {
+    //    artifact {
+    //        classifier = "android-arm64"
+    //    }
+    //}
+    runtimeOnly(libs.libcxx.provider)
+}
+// --- Задача для принудительного копирования библиотеки OpenCV ---
+tasks.register<Copy>("copyOpenCvToJniLibs") {
+    dependsOn("extractNativeLibs")  // Явно указываем зависимость
+    from("src/main/jniLibs/arm64-v8a/libopencv_java4.so")
+    into("build/intermediates/jniLibs/debug/arm64-v8a")
+}
+
+// Привязываем нашу задачу к процессу сборки
+afterEvaluate {
+    val mergeTask = tasks.findByName("mergeDebugJniLibFolders")
+        ?: tasks.findByName("mergeDebugNativeLibs")
+    if (mergeTask != null) {
+        mergeTask.dependsOn("copyOpenCvToJniLibs")
+        println("OpenCV copy task attached to ${mergeTask.name}")
+    } else {
+        println("Warning: Could not find merge task for jniLibs")
+    }
+}
+tasks.register<Copy>("checkOpenCv") {
+    doLast {
+        val opencvFile = file("src/main/jniLibs/arm64-v8a/libopencv_java4.so")
+        println("OpenCV file exists in project: ${opencvFile.exists()}")
+        if (opencvFile.exists()) {
+            println("OpenCV file size: ${opencvFile.length()} bytes")
         }
     }
-    runtimeOnly(libs.libcxx.provider)
 }

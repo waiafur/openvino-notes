@@ -24,6 +24,7 @@ coroutinesTest = "1.7.3"
 coreTesting = "2.2.0"
 jna = "5.13.0"
 opencv = "4.13.0-1.5.13"
+monitor = "1.8.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +61,7 @@ androidx-core-testing = { group = "androidx.arch.core", name = "core-testing", v
 #openVINO зависимости
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 opencv-android = { module = "org.bytedeco:opencv", version.ref = "opencv" }
+androidx-monitor = { group = "androidx.test", name = "monitor", version.ref = "monitor" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

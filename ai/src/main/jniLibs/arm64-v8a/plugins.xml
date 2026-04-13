@@ -1,0 +1,10 @@
+<ie>
+    <plugins>
+        <!-- Указываем плагин для CPU -->
+        <plugin name="CPU" location="libopenvino_arm_cpu_plugin.so">
+            <properties>
+                <property key="LP_TRANSFORMS" value=""/>
+            </properties>
+        </plugin>
+    </plugins>
+</ie>
