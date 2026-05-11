@@ -1,5 +1,6 @@
 package com.itlab.domain
 
+import com.itlab.domain.model.ContentItem
 import com.itlab.domain.model.Note
 import com.itlab.domain.model.NoteFolder
 import com.itlab.domain.repository.NoteFolderRepository
@@ -11,8 +12,10 @@ import com.itlab.domain.usecase.noteusecase.DeleteTagUseCase
 import com.itlab.domain.usecase.noteusecase.DuplicateNoteUseCase
 import com.itlab.domain.usecase.noteusecase.GetAllFavoritesUseCase
 import com.itlab.domain.usecase.noteusecase.GetNoteUseCase
+import com.itlab.domain.usecase.noteusecase.GetNotesByTagUseCase
 import com.itlab.domain.usecase.noteusecase.MoveNoteToFolderUseCase
 import com.itlab.domain.usecase.noteusecase.ObserveNotesUseCase
+import com.itlab.domain.usecase.noteusecase.SearchNotesUseCase
 import com.itlab.domain.usecase.noteusecase.SwitchFavoriteUseCase
 import com.itlab.domain.usecase.noteusecase.UpdateNoteUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -332,5 +335,46 @@ class NoteUseCasesTest {
             } catch (e: IllegalArgumentException) {
                 assertEquals("Note not found", e.message)
             }
+        }
+
+    @Test
+    fun getNotesByTag_returnsOnlyMatchingTag() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val useCase = GetNotesByTagUseCase(repo)
+
+            repo.createNote(Note(id = "n10", tags = setOf("work", "urgent")))
+            repo.createNote(Note(id = "n11", tags = setOf("personal")))
+
+            val result = useCase("URGENT").first()
+
+            assertEquals(1, result.size)
+            assertEquals("n10", result.first().id)
+        }
+
+    @Test
+    fun searchNotes_findsByTitleAndTextContent() =
+        runBlocking {
+            val repo = FakeNotesRepo()
+            val useCase = SearchNotesUseCase(repo)
+
+            repo.createNote(
+                Note(
+                    id = "n8",
+                    title = "Планы на отпуск",
+                ),
+            )
+            repo.createNote(
+                Note(
+                    id = "n9",
+                    title = "Покупки",
+                    contentItems = listOf(ContentItem.Text(text = "Купить молоко и хлеб")),
+                ),
+            )
+
+            val result = useCase("молоко").first()
+
+            assertEquals(1, result.size)
+            assertEquals("n9", result.first().id)
         }
 }
