@@ -1,5 +1,6 @@
 package com.itlab.ai
 
+
 import android.content.Context
 import android.util.Log
 import org.intel.openvino.*
@@ -11,6 +12,12 @@ class OpenVinoEngine(
     private val modelXmlPath: String,
     private val deviceName: String = "CPU"
 ) {
+    
+    fun runLlmSummary(text: String): String = text
+
+    fun runLlmTagging(text: String): String = text
+
+    fun runYoloTagging(imageSource: String): String = imageSource
 
     companion object {
         private const val TAG = "OpenVinoEngine"
@@ -182,4 +189,3 @@ class OpenVinoEngine(
         release()
     }
 }
-
