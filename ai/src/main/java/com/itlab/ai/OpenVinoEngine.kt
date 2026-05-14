@@ -268,8 +268,8 @@ class OpenVinoEngine(
     }
 
     private fun debugLog(message: () -> String) {
-        if (Log.isLoggable(TAG, Log.DEBUG)) {
+        //if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, message())
-        }
+        //}
     }
 }
