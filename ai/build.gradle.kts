@@ -18,12 +18,12 @@ android {
         ndk {
             abiFilters.add("arm64-v8a")
         }
-
     }
+
     sourceSets {
         getByName("main") {
             jniLibs.srcDirs("src/main/jniLibs")
-            assets.srcDirs("src/main/assets")
+            assets.srcDirs("src/main/assets", "$buildDir/generated/yolo26/assets")
         }
     }
     // Копируем папку plugins.xml в merged native libs
@@ -32,7 +32,10 @@ android {
             doLast {
                 copy {
                     from("src/main/jniLibs/arm64-v8a/openvino-2026.2.0")
-                    into("$buildDir/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/arm64-v8a/openvino-2026.2.0")
+                    into(
+                        "$buildDir/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/arm64-v8a/" +
+                            "openvino-2026.2.0",
+                    )
                 }
             }
         }
@@ -40,12 +43,10 @@ android {
     tasks.whenTaskAdded {
         if (name.contains("merge") && name.contains("NativeLibs")) {
             doLast {
-                println("=== Merged dirs for ${name}:")
-                fileTree("$buildDir/intermediates").filter {
-                    it.name.endsWith(".so")
-                }.forEach {
-                    println(it.parentFile.absolutePath)
-                }
+                println("=== Merged dirs for $name:")
+                fileTree("$buildDir/intermediates")
+                    .filter { it.name.endsWith(".so") }
+                    .forEach { println(it.parentFile.absolutePath) }
             }
         }
     }
@@ -70,6 +71,33 @@ android {
     }
 }
 
+val prepareYolo26Model =
+    tasks.register<Exec>("prepareYolo26Model") {
+        val outputAssetsDir = layout.buildDirectory.dir("generated/yolo26/assets")
+        val workDir = layout.buildDirectory.dir("yolo26")
+        val script = layout.projectDirectory.file("scripts/prepare_yolo26_model.py")
+        val python = providers.environmentVariable("PYTHON").orElse("python3")
+
+        inputs.file(script)
+        outputs.dir(outputAssetsDir)
+
+        commandLine(
+            python.get(),
+            script.asFile.absolutePath,
+            "--output-assets-dir",
+            outputAssetsDir.get().asFile.absolutePath,
+            "--work-dir",
+            workDir.get().asFile.absolutePath,
+        )
+    }
+
+tasks
+    .matching {
+        it.name == "preBuild" || (it.name.startsWith("merge") && it.name.endsWith("Assets"))
+    }.configureEach {
+        dependsOn(prepareYolo26Model)
+    }
+
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_11)
@@ -91,8 +119,8 @@ tasks.whenTaskAdded {
     if (name.contains("mergeDebugNativeLibs") || name.contains("mergeReleaseNativeLibs")) {
         doLast {
             copy {
-                from("${rootDir}/ai/src/main/jniLibs/arm64-v8a/openvino-2026.2.0")
-                into("${buildDir}/intermediates/merged_native_libs/debug/out/lib/arm64-v8a/openvino-2026.2.0")
+                from("$rootDir/ai/src/main/jniLibs/arm64-v8a/openvino-2026.2.0")
+                into("$buildDir/intermediates/merged_native_libs/debug/out/lib/arm64-v8a/openvino-2026.2.0")
             }
         }
     }

@@ -1,0 +1,5 @@
+<ie>
+    <plugins>
+        <plugin name="CPU" location="libopenvino_arm_cpu_plugin.so" />
+    </plugins>
+</ie>
