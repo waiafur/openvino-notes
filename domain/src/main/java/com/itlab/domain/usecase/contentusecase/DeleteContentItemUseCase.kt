@@ -10,19 +10,18 @@ class DeleteContentItemUseCase(
     suspend operator fun invoke(
         noteId: String,
         itemId: String,
-    ): Result<Unit> =
-        runCatching {
-            requireNotBlank(noteId, "Note id")
-            requireNotBlank(itemId, "Content item id")
-            val note =
-                notesRepository.getNoteById(noteId)
-                    ?: throw IllegalArgumentException("Note not found: $noteId")
+    ) {
+        requireNotBlank(noteId, "Note id")
+        requireNotBlank(itemId, "Content item id")
+        val note =
+            notesRepository.getNoteById(noteId)
+                ?: throw IllegalArgumentException("Note not found: $noteId")
 
-            val updated =
-                note.copy(
-                    contentItems = note.contentItems.filterNot { it.id == itemId },
-                    updatedAt = Clock.System.now(),
-                )
-            notesRepository.updateNote(updated)
-        }
+        val updated =
+            note.copy(
+                contentItems = note.contentItems.filterNot { it.id == itemId },
+                updatedAt = Clock.System.now(),
+            )
+        notesRepository.updateNote(updated)
+    }
 }

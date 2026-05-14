@@ -76,7 +76,7 @@ class FolderUseCasesTest {
 
             val folder = NoteFolder(name = "Test")
 
-            val id = create(folder).getOrThrow()
+            val id = create(folder)
 
             val result = get(id)
 
@@ -94,12 +94,13 @@ class FolderUseCasesTest {
 
             val folder = NoteFolder(name = "Old")
 
-            val id = create(folder).getOrThrow()
+            val id = create(folder)
 
             val created = get(id)!!
 
             val updated = created.copy(name = "New")
-            update(updated).getOrThrow()
+            update(updated)
+
             val result = get(id)
 
             assertEquals("New", result?.name)
@@ -116,9 +117,9 @@ class FolderUseCasesTest {
 
             val folder = NoteFolder(name = "Test")
 
-            val id = create(folder).getOrThrow()
+            val id = create(folder)
 
-            delete(id).getOrThrow()
+            delete(id)
 
             val result = get(id)
 
@@ -132,20 +133,18 @@ class FolderUseCasesTest {
             val create = CreateFolderUseCase(repo)
             val observe = ObserveFoldersUseCase(repo)
 
-            create(NoteFolder(name = "A")).getOrThrow()
+            create(NoteFolder(name = "A"))
 
             val list = observe().first()
 
             assertEquals(1, list.size)
         }
 
-    @Test
-    fun createFolder_blankName_returnsFailure() =
+    @Test(expected = IllegalArgumentException::class)
+    fun createFolder_blankName_throws(): Unit =
         runBlocking {
             val repo = FakeFolderRepo()
             val create = CreateFolderUseCase(repo)
-            val result = create(NoteFolder(name = "   "))
-            assertEquals(true, result.isFailure)
-            assertEquals("Folder name must not be blank", result.exceptionOrNull()?.message)
+            create(NoteFolder(name = "   "))
         }
 }

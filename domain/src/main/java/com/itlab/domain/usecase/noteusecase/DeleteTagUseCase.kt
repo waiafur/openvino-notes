@@ -10,22 +10,21 @@ class DeleteTagUseCase(
     suspend operator fun invoke(
         noteId: String,
         tagToDel: String,
-    ): Result<Unit> =
-        runCatching {
-            requireNotBlank(noteId, "Note id")
-            val normalizedTag = tagToDel.trim()
-            requireNotBlank(normalizedTag, "Tag")
+    ) {
+        requireNotBlank(noteId, "Note id")
+        val normalizedTag = tagToDel.trim()
+        requireNotBlank(normalizedTag, "Tag")
 
-            val note =
-                repo.getNoteById(noteId)
-                    ?: throw IllegalArgumentException("Note not found: $noteId")
+        val note =
+            repo.getNoteById(noteId)
+                ?: throw IllegalArgumentException("Note not found: $noteId")
 
-            val updated =
-                note.copy(
-                    tags = note.tags - normalizedTag,
-                    updatedAt = Clock.System.now(),
-                )
+        val updated =
+            note.copy(
+                tags = note.tags - normalizedTag,
+                updatedAt = Clock.System.now(),
+            )
 
-            repo.updateNote(updated)
-        }
+        repo.updateNote(updated)
+    }
 }

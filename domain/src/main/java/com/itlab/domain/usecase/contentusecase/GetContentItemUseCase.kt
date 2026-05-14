@@ -10,14 +10,13 @@ class GetContentItemUseCase(
     suspend operator fun invoke(
         noteId: String,
         itemId: String,
-    ): Result<ContentItem?> =
-        runCatching {
-            requireNotBlank(noteId, "Note id")
-            requireNotBlank(itemId, "Content item id")
-            val note =
-                notesRepository.getNoteById(noteId)
-                    ?: throw IllegalArgumentException("Note not found: $noteId")
+    ): ContentItem? {
+        requireNotBlank(noteId, "Note id")
+        requireNotBlank(itemId, "Content item id")
+        val note =
+            notesRepository.getNoteById(noteId)
+                ?: throw IllegalArgumentException("Note not found: $noteId")
 
-            note.contentItems.find { it.id == itemId }
-        }
+        return note.contentItems.find { it.id == itemId }
+    }
 }

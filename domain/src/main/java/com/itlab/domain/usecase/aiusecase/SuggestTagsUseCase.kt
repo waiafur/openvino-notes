@@ -21,15 +21,14 @@ class SuggestTagsUseCase(
                 image.source.localPath ?: image.source.remoteUrl
             }
 
-    suspend operator fun invoke(noteId: String): Result<Set<String>> =
-        runCatching {
-            val note =
-                repo.getNoteById(noteId)
-                    ?: throw IllegalArgumentException("Note not found: $noteId")
+    suspend operator fun invoke(noteId: String): Set<String> {
+        val note =
+            repo.getNoteById(noteId)
+                ?: throw IllegalArgumentException("Note not found: $noteId")
 
-            val text = extractText(note)
-            val imageUrls = extractImages(note)
+        val text = extractText(note)
+        val imageUrls = extractImages(note)
 
-            ai.tagTXT(text) + ai.tagIMGs(imageUrls)
-        }
+        return ai.tagTXT(text) + ai.tagIMGs(imageUrls)
+    }
 }
