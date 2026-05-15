@@ -15,7 +15,8 @@ class OpenVinoAiLayerInstrumentedTest {
     @Test
     fun summarize_returnsTrimmedSummary_onDevice() =
         runBlocking {
-            val service = OpenVinoNoteAiService(OpenVinoEngine(), ResultProcessor())
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val service = OpenVinoNoteAiService(OpenVinoEngine(context), ResultProcessor())
 
             val result = service.summarize("  Summary text  ")
 
@@ -25,7 +26,8 @@ class OpenVinoAiLayerInstrumentedTest {
     @Test
     fun tagTXT_normalizesCaseAndSeparators_onDevice() =
         runBlocking {
-            val service = OpenVinoNoteAiService(OpenVinoEngine(), ResultProcessor())
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val service = OpenVinoNoteAiService(OpenVinoEngine(context), ResultProcessor())
 
             val result = service.tagTXT(" Kotlin, Notes\nAI ")
 
@@ -35,7 +37,8 @@ class OpenVinoAiLayerInstrumentedTest {
     @Test
     fun tagIMGs_aggregatesAndDeduplicatesTags_onDevice() =
         runBlocking {
-            val service = OpenVinoNoteAiService(OpenVinoEngine(), ResultProcessor())
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val service = OpenVinoNoteAiService(OpenVinoEngine(context), ResultProcessor())
 
             val result = service.tagIMGs(listOf("Cat, Pet", "pet, animal", "  CAT"))
 

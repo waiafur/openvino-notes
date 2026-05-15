@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
+import androidx.core.graphics.scale
 import org.intel.openvino.CompiledModel
 import org.intel.openvino.Core
 import org.intel.openvino.InferRequest
@@ -13,7 +14,6 @@ import org.intel.openvino.Tensor
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import androidx.core.graphics.scale
 
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
 class OpenVinoEngine(
@@ -42,10 +42,8 @@ class OpenVinoEngine(
     private var isInitialized = false
     private var activeModelXmlPath = modelXmlPath
 
-    // Список классов из coco.names
     private var classNames: List<String> = emptyList()
 
-    // Информация о входах/выходах модели
     var inputName: String = ""
         private set
     var inputShape: LongArray = longArrayOf()
@@ -59,20 +57,21 @@ class OpenVinoEngine(
         private set
     var outputElementType: String = ""
         private set
+
     fun runLlmSummary(text: String): String = text
 
     fun runLlmTagging(text: String): String = text
 
-    // Основной метод для YOLO детекции (вызывается из app модуля)
     fun runYoloTagging(imageSource: String): String {
         debugLog { "Running YOLO tagging on: $imageSource" }
 
-        val bitmap = try {
-            android.graphics.BitmapFactory.decodeFile(imageSource)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading image", e)
-            null
-        }
+        val bitmap =
+            try {
+                android.graphics.BitmapFactory.decodeFile(imageSource)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading image", e)
+                null
+            }
 
         if (bitmap == null) {
             Log.e(TAG, "Failed to load image: $imageSource")
@@ -87,18 +86,17 @@ class OpenVinoEngine(
             return ""
         }
 
-        // Преобразуем детекции в строку тегов через запятую
-        val tags = detections
-            .map { it.classId }
-            .distinct()
-            .mapNotNull { classId -> getClassName(classId) }
-            .joinToString(",")
+        val tags =
+            detections
+                .map { it.classId }
+                .distinct()
+                .mapNotNull { classId -> getClassName(classId) }
+                .joinToString(",")
 
         debugLog { "Detected tags: $tags" }
         return tags
     }
 
-    // Внутренний метод для детекции
     private fun detectYolo(bitmap: Bitmap): List<YoloDetection> {
         if (!isInitialized) {
             Log.e(TAG, "Engine not initialized")
@@ -119,16 +117,14 @@ class OpenVinoEngine(
 
             debugLog { "✅ Detection complete, found ${detections.size} objects" }
             detections
-
         } catch (e: Exception) {
             Log.e(TAG, "YOLO detection failed", e)
             emptyList()
         }
     }
 
-    // Загрузка классов из coco.names
-    private fun loadClassNames(appContext: Context): List<String> {
-        return try {
+    private fun loadClassNames(appContext: Context): List<String> =
+        try {
             val names = mutableListOf<String>()
             appContext.assets.open(COCO_NAMES_FILE).bufferedReader().useLines { lines ->
                 lines.forEach { line ->
@@ -143,19 +139,15 @@ class OpenVinoEngine(
             Log.e(TAG, "Failed to load $COCO_NAMES_FILE", e)
             emptyList()
         }
-    }
 
-    // Получение имени класса по ID
-    private fun getClassName(classId: Int): String? {
-        return if (classId in classNames.indices) {
+    private fun getClassName(classId: Int): String? =
+        if (classId in classNames.indices) {
             classNames[classId]
         } else {
             Log.w(TAG, "Unknown class ID: $classId")
             "class_$classId"
         }
-    }
 
-    // Подготовка изображения для инференса
     @SuppressLint("UseKtx")
     private fun preprocessBitmap(bitmap: Bitmap): FloatArray {
         debugLog { "Preprocessing bitmap: ${bitmap.width}x${bitmap.height}" }
@@ -172,7 +164,6 @@ class OpenVinoEngine(
             val g = (pixels[i] shr 8 and 0xFF) / 255.0f
             val b = (pixels[i] and 0xFF) / 255.0f
 
-            // Формат BGR для YOLO
             inputData[i] = b
             inputData[area + i] = g
             inputData[2 * area + i] = r
@@ -181,13 +172,11 @@ class OpenVinoEngine(
         return inputData
     }
 
-    // Создание тензора
     private fun createInputTensor(inputData: FloatArray): Tensor {
         val shape = intArrayOf(1, 3, INPUT_SIZE, INPUT_SIZE)
         return Tensor(shape, inputData)
     }
 
-    // Парсинг выходного тензора
     private fun parseOutputTensor(outputTensor: Tensor?): List<YoloDetection> {
         if (outputTensor == null) {
             Log.e(TAG, "Output tensor is null")
@@ -203,7 +192,6 @@ class OpenVinoEngine(
 
             val detections = mutableListOf<YoloDetection>()
 
-            // Формат: [batch, num_detections, 6] где 6 = [x1,y1,x2,y2,confidence,classId]
             if (outputData.size >= MAX_DETECTIONS * 6) {
                 for (i in 0 until MAX_DETECTIONS) {
                     val base = i * 6
@@ -217,14 +205,16 @@ class OpenVinoEngine(
                     val classId = outputData[base + 5].toInt()
 
                     if (confidence > CONF_THRESHOLD) {
-                        detections.add(YoloDetection(
-                            x1 = x1.coerceIn(0f, INPUT_SIZE.toFloat()),
-                            y1 = y1.coerceIn(0f, INPUT_SIZE.toFloat()),
-                            x2 = x2.coerceIn(0f, INPUT_SIZE.toFloat()),
-                            y2 = y2.coerceIn(0f, INPUT_SIZE.toFloat()),
-                            confidence = confidence,
-                            classId = classId
-                        ))
+                        detections.add(
+                            YoloDetection(
+                                x1 = x1.coerceIn(0f, INPUT_SIZE.toFloat()),
+                                y1 = y1.coerceIn(0f, INPUT_SIZE.toFloat()),
+                                x2 = x2.coerceIn(0f, INPUT_SIZE.toFloat()),
+                                y2 = y2.coerceIn(0f, INPUT_SIZE.toFloat()),
+                                confidence = confidence,
+                                classId = classId,
+                            ),
+                        )
                     }
                 }
             } else {
@@ -232,23 +222,22 @@ class OpenVinoEngine(
             }
 
             applyNMS(detections, IOU_THRESHOLD)
-
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse output tensor", e)
             emptyList()
         }
     }
 
-    // Получение данных из тензора
-    private fun getTensorDataAsFloatArray(tensor: Tensor): FloatArray {
-        return try {
-            // Пробуем получить как ByteArray и конвертировать
+    private fun getTensorDataAsFloatArray(tensor: Tensor): FloatArray =
+        try {
             when (val data = tensor.data()) {
                 is FloatArray -> data
                 is ByteArray -> {
-                    // Конвертируем ByteArray в FloatArray
                     val floatArray = FloatArray(data.size / 4)
-                    java.nio.ByteBuffer.wrap(data).asFloatBuffer().get(floatArray)
+                    java.nio.ByteBuffer
+                        .wrap(data)
+                        .asFloatBuffer()
+                        .get(floatArray)
                     floatArray
                 }
                 else -> {
@@ -260,10 +249,11 @@ class OpenVinoEngine(
             Log.e(TAG, "Failed to get tensor data", e)
             floatArrayOf()
         }
-    }
 
-    // Non-Maximum Suppression
-    private fun applyNMS(detections: List<YoloDetection>, iouThreshold: Float): List<YoloDetection> {
+    private fun applyNMS(
+        detections: List<YoloDetection>,
+        iouThreshold: Float,
+    ): List<YoloDetection> {
         if (detections.isEmpty()) return emptyList()
 
         val sorted = detections.sortedByDescending { it.confidence }
@@ -291,8 +281,10 @@ class OpenVinoEngine(
         return selected
     }
 
-    // Вычисление Intersection over Union
-    private fun calculateIOU(box1: YoloDetection, box2: YoloDetection): Float {
+    private fun calculateIOU(
+        box1: YoloDetection,
+        box2: YoloDetection,
+    ): Float {
         val x1 = maxOf(box1.x1, box2.x1)
         val y1 = maxOf(box1.y1, box2.y1)
         val x2 = minOf(box1.x2, box2.x2)
@@ -308,7 +300,6 @@ class OpenVinoEngine(
         return if (union > 0) intersection / union else 0f
     }
 
-    // Инициализация (добавляем загрузку coco.names)
     fun initialize(): Boolean {
         debugLog { "Initializing OpenVINO Engine..." }
         debugLog { "Model path: $modelXmlPath" }
@@ -336,7 +327,7 @@ class OpenVinoEngine(
         activeModelXmlPath = resolvedModelXmlPath
 
         return if (!File(activeModelXmlPath).exists()) {
-            Log.e(TAG, "❌ Model file not found: $activeModelXmlPath")
+            Log.e(TAG, "Model file not found: $activeModelXmlPath")
             false
         } else {
             initializeOpenVino(appContext)
@@ -414,7 +405,7 @@ class OpenVinoEngine(
             } else {
                 loadAndCompileModel(activeCore)
                 isInitialized = true
-                debugLog { "✅ Engine initialized successfully" }
+                debugLog { "Engine initialized successfully" }
                 true
             }
         } catch (e: Exception) {
@@ -524,7 +515,7 @@ class OpenVinoEngine(
             debugLog { "=== Starting OpenVINO Engine Test ===" }
             initialize()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Test failed: ${e.message}", e)
+            Log.e(TAG, "Test failed: ${e.message}", e)
             false
         }
 
@@ -537,12 +528,11 @@ class OpenVinoEngine(
     }
 }
 
-// Data class для результатов детекции
 data class YoloDetection(
     val x1: Float,
     val y1: Float,
     val x2: Float,
     val y2: Float,
     val confidence: Float,
-    val classId: Int
+    val classId: Int,
 )
