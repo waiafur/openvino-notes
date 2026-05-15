@@ -26,20 +26,6 @@ android {
             assets.srcDirs("src/main/assets", "$buildDir/generated/yolo26/assets")
         }
     }
-    // Копируем папку plugins.xml в merged native libs
-    //tasks.whenTaskAdded {
-    //    if (name == "mergeDebugNativeLibs") {
-    //        doLast {
-    //            copy {
-    //                from("src/main/jniLibs/arm64-v8a/openvino-2026.2.0")
-    //                into(
-    //                    "$buildDir/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/arm64-v8a/" +
-    //                        "openvino-2026.2.0",
-    //                )
-    //            }
-    //        }
-    //    }
-    //}
     tasks.whenTaskAdded {
         if (name.contains("merge") && name.contains("NativeLibs")) {
             doLast {
@@ -76,8 +62,6 @@ val prepareYolo26Model =
         val outputAssetsDir = layout.buildDirectory.dir("generated/yolo26/assets")
         val workDir = layout.buildDirectory.dir("yolo26")
         val script = layout.projectDirectory.file("scripts/prepare_yolo26_model.py")
-        //val python = providers.environmentVariable("PYTHON").orElse("python3")
-        // Для Windows используем python, для других ОС - python3
         val python = if (System.getProperty("os.name").lowercase().contains("windows")) {
             providers.environmentVariable("PYTHON").orElse("python")
         } else {

@@ -12,9 +12,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val engine = OpenVinoEngine(context = this)
-
-        engine.test()
         setContent {
             notesTheme {
                 notesApp()
