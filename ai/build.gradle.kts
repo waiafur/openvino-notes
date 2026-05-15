@@ -62,11 +62,12 @@ val prepareYolo26Model =
         val outputAssetsDir = layout.buildDirectory.dir("generated/yolo26/assets")
         val workDir = layout.buildDirectory.dir("yolo26")
         val script = layout.projectDirectory.file("scripts/prepare_yolo26_model.py")
-        val python = if (System.getProperty("os.name").lowercase().contains("windows")) {
-            providers.environmentVariable("PYTHON").orElse("python")
-        } else {
-            providers.environmentVariable("PYTHON").orElse("python3")
-        }
+        val python =
+            if (System.getProperty("os.name").lowercase().contains("windows")) {
+                providers.environmentVariable("PYTHON").orElse("python")
+            } else {
+                providers.environmentVariable("PYTHON").orElse("python3")
+            }
 
         inputs.file(script)
         outputs.dir(outputAssetsDir)
