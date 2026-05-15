@@ -1,6 +1,5 @@
 package com.itlab.ai
 
-import android.content.Context
 import com.itlab.domain.ai.NoteAiService
 
 class OpenVinoNoteAiService(

@@ -13,7 +13,6 @@ import org.intel.openvino.Tensor
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.FloatBuffer
 import androidx.core.graphics.scale
 
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
