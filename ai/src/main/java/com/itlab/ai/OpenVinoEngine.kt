@@ -103,7 +103,7 @@ class OpenVinoEngine(
         }
 
     private suspend fun detectYolo(bitmap: Bitmap): List<YoloDetection> {
-        if (!ensureInitialized()) return emptyList()
+        if (!isInitialized) return emptyList()
 
         return try {
             debugLog { "Starting YOLO detection..." }
@@ -124,7 +124,7 @@ class OpenVinoEngine(
             emptyList()
         }
     }
-
+    @Suppress("UnusedPrivateMember")
     private fun getOptimalModelPath(): String {
         val coreCount = Runtime.getRuntime().availableProcessors()
         val totalRam = fileSystem.getTotalRamMB()
@@ -333,15 +333,6 @@ class OpenVinoEngine(
                 }
             }
         }
-
-    private suspend fun ensureInitialized(): Boolean {
-        if (isInitialized) return true
-        if (initAttempted) return false
-
-        initAttempted = true
-        isInitialized = initialize()
-        return isInitialized
-    }
 
     private fun loadClassNames(fs: FileSystemProvider): List<String> =
         try {
