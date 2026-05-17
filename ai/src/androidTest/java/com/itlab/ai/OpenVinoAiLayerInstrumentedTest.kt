@@ -30,31 +30,28 @@ class OpenVinoAiLayerInstrumentedTest {
     }
 
     @Test
-    fun summarize_returnsTrimmedSummary() =
-        runBlocking {
-            val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
-            val result = service.summarize("  Summary text  ")
-            assertEquals("Summary text", result)
-        }
+    fun summarize_returnsTrimmedSummary() = runBlocking {
+        val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
+        val result = service.summarize("  Summary text  ")
+        assertEquals("Summary text", result)
+    }
 
     @Test
-    fun tagTXT_normalizesCaseAndSeparators() =
-        runBlocking {
-            val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
-            val result = service.tagTXT(" Kotlin, Notes\nAI ")
-            assertEquals(setOf("kotlin", "notes", "ai"), result)
-        }
+    fun tagTXT_normalizesCaseAndSeparators() = runBlocking {
+        val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
+        val result = service.tagTXT(" Kotlin, Notes\nAI ")
+        assertEquals(setOf("kotlin", "notes", "ai"), result)
+    }
 
     @Test
-    fun tagIMGs_aggregatesAndDeduplicatesTags() =
-        runBlocking {
-            val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
-            val result = service.tagIMGs(listOf("Cat, Pet", "pet, animal", "  CAT"))
-            assertEquals(setOf("cat", "pet", "animal"), result)
-        }
+    fun tagIMGs_aggregatesAndDeduplicatesTags() = runBlocking {
+        val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
+        val result = service.tagIMGs(listOf("Cat, Pet", "pet, animal", "  CAT"))
+        assertEquals(setOf("cat", "pet", "animal"), result)
+    }
 
     @Test
-    fun initialize_returnsFalseWhenModelIsMissing() {
+    fun initialize_returnsFalseWhenModelIsMissing() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val missingModel = File(context.filesDir, "missing-model.xml")
         val engine = createEngine(missingModel.absolutePath)
@@ -65,7 +62,7 @@ class OpenVinoAiLayerInstrumentedTest {
     }
 
     @Test
-    fun initialize_loadsBundledYoloModel() {
+    fun initialize_loadsBundledYoloModel() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val copiedModel = File(context.filesDir, "models/yolo26n_openvino_model/yolo26n.xml")
         val engine = createEngine()
@@ -82,9 +79,7 @@ class OpenVinoAiLayerInstrumentedTest {
         private val context: android.content.Context,
     ) : FileSystemProvider {
         override fun openAsset(path: String): InputStream = context.assets.open(path)
-
         override fun listAssets(path: String): Array<String> = context.assets.list(path) ?: emptyArray()
-
         override fun getFilesDir(): File = context.filesDir
     }
 }
