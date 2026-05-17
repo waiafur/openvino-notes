@@ -1,9 +1,5 @@
 package com.itlab
 
-import com.itlab.ai.OpenVinoEngine
-import com.itlab.ai.OpenVinoNoteAiService
-import com.itlab.ai.ResultProcessor
-import com.itlab.domain.ai.NoteAiService
 import com.itlab.domain.app.FileSystemProvider
 import com.itlab.domain.usecase.folderusecase.CreateFolderUseCase
 import com.itlab.domain.usecase.folderusecase.DeleteFolderUseCase
@@ -86,11 +82,6 @@ val appModule =
                 getAllFavoritesUseCase = get(),
                 getNoteUseCase = get(),
             )
-        }
-        single { OpenVinoEngine(fileSystem = get()) }
-        single { ResultProcessor() }
-        single<NoteAiService> {
-            OpenVinoNoteAiService(engine = get(), processor = get())
         }
         single<FileSystemProvider> {
             AndroidFileSystemProvider(androidContext())

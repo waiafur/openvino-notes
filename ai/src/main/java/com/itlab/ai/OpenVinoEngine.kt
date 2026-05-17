@@ -509,10 +509,10 @@ class OpenVinoEngine(
 
     fun release() {
         try {
-            inferRequest = null
-            compiledModel = null
-            model = null
-            core = null
+            core?.close()
+            inferRequest?.close()
+            compiledModel?.close()
+            model?.close()
             isInitialized = false
             debugLog { "Engine resources released" }
         } catch (e: Exception) {
@@ -529,9 +529,6 @@ class OpenVinoEngine(
             false
         }
 
-    protected fun finalize() {
-        release()
-    }
 
     private fun debugLog(message: () -> String) {
         Log.d(TAG, message())
