@@ -43,8 +43,6 @@ class OpenVinoEngine(
     private var inferRequest: InferRequest? = null
 
     private var isInitialized = false
-
-    private var initAttempted = false
     private var activeModelXmlPath = modelXmlPath
 
     private var classNames: List<String> = emptyList()
@@ -124,6 +122,7 @@ class OpenVinoEngine(
             emptyList()
         }
     }
+
     @Suppress("UnusedPrivateMember")
     private fun getOptimalModelPath(): String {
         val coreCount = Runtime.getRuntime().availableProcessors()
