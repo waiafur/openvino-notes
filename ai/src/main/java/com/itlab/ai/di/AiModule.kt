@@ -4,12 +4,18 @@ import com.itlab.ai.OpenVinoEngine
 import com.itlab.ai.OpenVinoNoteAiService
 import com.itlab.ai.ResultProcessor
 import com.itlab.domain.ai.NoteAiService
+import kotlinx.coroutines.runBlocking
 import org.koin.dsl.module
 
-val aiModule = module {
-    single { OpenVinoEngine(fileSystem = get()) }
-    single { ResultProcessor() }
-    single<NoteAiService> {
-        OpenVinoNoteAiService(engine = get(), processor = get())
+val aiModule =
+    module {
+        single {
+            OpenVinoEngine(fileSystem = get()).also { engine ->
+                runBlocking { engine.initialize() }
+            }
+        }
+        single { ResultProcessor() }
+        single<NoteAiService> {
+            OpenVinoNoteAiService(engine = get(), processor = get())
+        }
     }
-}

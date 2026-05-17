@@ -25,6 +25,9 @@ android {
             jniLibs.srcDirs("src/main/jniLibs")
             assets.srcDirs("src/main/assets", "$buildDir/generated/yolo26/assets")
         }
+        getByName("androidTest") {
+            assets.srcDirs("src/androidTest/assets")
+        }
     }
     tasks.whenTaskAdded {
         if (name.contains("merge") && name.contains("NativeLibs")) {
@@ -88,6 +91,10 @@ tasks
     }.configureEach {
         dependsOn(prepareYolo26Model)
     }
+
+tasks.matching { it.name == "mergeDebugAndroidTestAssets" }.configureEach {
+    dependsOn("copyYoloToTestAssets")
+}
 
 kotlin {
     compilerOptions {

@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.graphics.scale
 import com.itlab.domain.app.FileSystemProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.intel.openvino.CompiledModel
 import org.intel.openvino.Core
 import org.intel.openvino.InferRequest
@@ -15,9 +17,6 @@ import org.intel.openvino.Tensor
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import android.app.ActivityManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
 class OpenVinoEngine(
@@ -36,24 +35,6 @@ class OpenVinoEngine(
         private const val CONF_THRESHOLD = 0.35f
         private const val IOU_THRESHOLD = 0.45f
         private const val MAX_DETECTIONS = 300
-
-        fun getOptimalModelPath(context: Context): String {
-            val coreCount = Runtime.getRuntime().availableProcessors()
-            val totalRam = getTotalRamMB(context)
-
-            return if (coreCount <= 4 || totalRam <= 2048) {
-                "models/yolo26n_openvino_model/yolo26n.xml"
-            } else {
-                "models/yolov10n_openvino_model/yolov10n.xml"
-            }
-        }
-
-        private fun getTotalRamMB(context: Context): Long {
-            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            val memInfo = ActivityManager.MemoryInfo()
-            activityManager.getMemoryInfo(memInfo)
-            return memInfo.totalMem / (1024 * 1024)
-        }
     }
 
     private var core: Core? = null
@@ -86,41 +67,42 @@ class OpenVinoEngine(
 
     fun runLlmTagging(text: String): String = text
 
-    suspend fun runYoloTagging(imageSource: String): String = withContext(Dispatchers.IO)  {
-        debugLog { "Running YOLO tagging on: $imageSource" }
+    suspend fun runYoloTagging(imageSource: String): String =
+        withContext(Dispatchers.Default) {
+            debugLog { "Running YOLO tagging on: $imageSource" }
 
-        val bitmap =
-            try {
-                android.graphics.BitmapFactory.decodeFile(imageSource)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading image", e)
-                null
-            }
+            val bitmap =
+                try {
+                    android.graphics.BitmapFactory.decodeFile(imageSource)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error loading image", e)
+                    null
+                }
 
-        return@withContext if (bitmap != null) {
-            val detections = detectYolo(bitmap)
-            bitmap.recycle()
+            return@withContext if (bitmap != null) {
+                val detections = detectYolo(bitmap)
+                bitmap.recycle()
 
-            if (detections.isNotEmpty()) {
-                val tags =
-                    detections
-                        .map { it.classId }
-                        .distinct()
-                        .mapNotNull { classId -> getClassName(classId) }
-                        .joinToString(",")
-                debugLog { "Detected tags: $tags" }
-                tags
+                if (detections.isNotEmpty()) {
+                    val tags =
+                        detections
+                            .map { it.classId }
+                            .distinct()
+                            .mapNotNull { classId -> getClassName(classId) }
+                            .joinToString(",")
+                    debugLog { "Detected tags: $tags" }
+                    tags
+                } else {
+                    debugLog { "No objects detected" }
+                    ""
+                }
             } else {
-                debugLog { "No objects detected" }
+                Log.e(TAG, "Failed to load image: $imageSource")
                 ""
             }
-        } else {
-            Log.e(TAG, "Failed to load image: $imageSource")
-            ""
         }
-    }
 
-    private suspend fun detectYolo(bitmap: Bitmap): List<YoloDetection>{
+    private suspend fun detectYolo(bitmap: Bitmap): List<YoloDetection> {
         if (!ensureInitialized()) return emptyList()
 
         return try {
@@ -140,6 +122,17 @@ class OpenVinoEngine(
         } catch (e: Exception) {
             Log.e(TAG, "YOLO detection failed", e)
             emptyList()
+        }
+    }
+
+    private fun getOptimalModelPath(): String {
+        val coreCount = Runtime.getRuntime().availableProcessors()
+        val totalRam = fileSystem.getTotalRamMB()
+
+        return if (coreCount >= 4 && totalRam >= 2048) {
+            "models/yolo26n_openvino_model/yolo26n.xml"
+        } else {
+            "models/yolov10n_openvino_model/yolov10n.xml"
         }
     }
 
@@ -317,27 +310,29 @@ class OpenVinoEngine(
         return if (union > 0) intersection / union else 0f
     }
 
-    suspend fun initialize(): Boolean = withContext(Dispatchers.IO) {
-        debugLog { "Initializing OpenVINO Engine..." }
-        debugLog { "Model path: $modelXmlPath" }
-        isInitialized = false
+    suspend fun initialize(): Boolean =
+        withContext(Dispatchers.Default) {
+            debugLog { "Initializing OpenVINO Engine..." }
 
-        val fs = fileSystem
-        return@withContext when {
-            fs == null -> {
-                Log.e(TAG, "FileSystemProvider is required to initialize OpenVINO")
-                false
-            }
+            isInitialized = false
 
-            else -> {
-                classNames = loadClassNames(fs)
-                if (classNames.isEmpty()) {
-                    Log.w(TAG, "No class names loaded, using IDs instead")
+            val fs = fileSystem
+            return@withContext when {
+                fs == null -> {
+                    Log.e(TAG, "FileSystemProvider is required to initialize OpenVINO")
+                    false
                 }
-                initializeWithResolvedModel(fs)
+                else -> {
+                    classNames = loadClassNames(fs)
+                    if (classNames.isEmpty()) {
+                        Log.w(TAG, "No class names loaded, using IDs instead")
+                    }
+                    val result = initializeWithResolvedModel(fs)
+                    debugLog { "Resolved model path: $activeModelXmlPath" }
+                    result
+                }
             }
         }
-    }
 
     private suspend fun ensureInitialized(): Boolean {
         if (isInitialized) return true
@@ -559,7 +554,6 @@ class OpenVinoEngine(
             Log.e(TAG, "Test failed: ${e.message}", e)
             false
         }
-
 
     private fun debugLog(message: () -> String) {
         Log.d(TAG, message())

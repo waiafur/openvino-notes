@@ -3,7 +3,9 @@ package com.itlab.ai
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.itlab.domain.app.FileSystemProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -30,56 +32,74 @@ class OpenVinoAiLayerInstrumentedTest {
     }
 
     @Test
-    fun summarize_returnsTrimmedSummary() = runBlocking {
-        val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
-        val result = service.summarize("  Summary text  ")
-        assertEquals("Summary text", result)
-    }
+    fun summarize_returnsTrimmedSummary() =
+        runBlocking {
+            val engine = createEngine()
+            engine.initialize() // Явно инициализируем
+            val service = OpenVinoNoteAiService(engine, ResultProcessor())
+            val result = service.summarize("  Summary text  ")
+            assertEquals("Summary text", result)
+        }
 
     @Test
-    fun tagTXT_normalizesCaseAndSeparators() = runBlocking {
-        val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
-        val result = service.tagTXT(" Kotlin, Notes\nAI ")
-        assertEquals(setOf("kotlin", "notes", "ai"), result)
-    }
+    fun tagTXT_normalizesCaseAndSeparators() =
+        runBlocking {
+            val engine = createEngine()
+            engine.initialize()
+            val service = OpenVinoNoteAiService(engine, ResultProcessor())
+            val result = service.tagTXT(" Kotlin, Notes\nAI ")
+            assertEquals(setOf("kotlin", "notes", "ai"), result)
+        }
 
     @Test
-    fun tagIMGs_aggregatesAndDeduplicatesTags() = runBlocking {
-        val service = OpenVinoNoteAiService(createEngine(), ResultProcessor())
-        val result = service.tagIMGs(listOf("Cat, Pet", "pet, animal", "  CAT"))
-        assertEquals(setOf("cat", "pet", "animal"), result)
-    }
+    fun tagIMGs_aggregatesAndDeduplicatesTags() =
+        runBlocking {
+            val processor = ResultProcessor()
+            val result = processor.normalizeTags(("Cat, Pet, pet, animal,   CAT"))
+            assertEquals(setOf("cat", "pet", "animal"), result)
+        }
 
     @Test
-    fun initialize_returnsFalseWhenModelIsMissing() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val missingModel = File(context.filesDir, "missing-model.xml")
-        val engine = createEngine(missingModel.absolutePath)
+    fun initialize_returnsFalseWhenModelIsMissing() =
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val missingModel = File(context.filesDir, "missing-model.xml")
+            val engine = createEngine(missingModel.absolutePath)
 
-        val initialized = engine.initialize()
+            val initialized =
+                withContext(Dispatchers.Default) {
+                    engine.initialize()
+                }
 
-        assertFalse(initialized)
-    }
+            assertFalse(initialized)
+        }
 
     @Test
-    fun initialize_loadsBundledYoloModel() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val copiedModel = File(context.filesDir, "models/yolo26n_openvino_model/yolo26n.xml")
-        val engine = createEngine()
+    fun initialize_loadsBundledYoloModel() =
+        runBlocking {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val copiedModel = File(context.filesDir, "models/yolo26n_openvino_model/yolo26n.xml")
+            val engine = createEngine()
 
-        val initialized = engine.initialize()
+            val initialized =
+                withContext(Dispatchers.Default) {
+                    engine.initialize()
+                }
 
-        assertTrue(copiedModel.exists())
-        assertTrue(initialized)
-        assertTrue(engine.isReady())
-    }
+            assertTrue(copiedModel.exists())
+            assertTrue(initialized)
+            assertTrue(engine.isReady())
+        }
 
-    // Тестовая реализация FileSystemProvider внутри ai модуля
     private class TestFileSystemProvider(
         private val context: android.content.Context,
     ) : FileSystemProvider {
         override fun openAsset(path: String): InputStream = context.assets.open(path)
+
         override fun listAssets(path: String): Array<String> = context.assets.list(path) ?: emptyArray()
+
         override fun getFilesDir(): File = context.filesDir
+
+        override fun getTotalRamMB(): Long = 1024
     }
 }

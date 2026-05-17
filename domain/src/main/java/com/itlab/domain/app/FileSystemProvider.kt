@@ -9,4 +9,6 @@ interface FileSystemProvider {
     fun listAssets(path: String): Array<String>?
 
     fun getFilesDir(): File
+
+    fun getTotalRamMB(): Long
 }
