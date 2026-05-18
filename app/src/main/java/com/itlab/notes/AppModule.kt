@@ -24,7 +24,7 @@ import com.itlab.notes.onboarding.OnboardingViewModel
 import com.itlab.notes.ui.NotesUseCases
 import com.itlab.notes.ui.NotesViewModel
 import com.itlab.notes.ui.auth.AuthViewModel
-import com.itlab.notes.ui.notes.aiModule
+import com.itlab.notes.aiModule
 import org.koin.android.ext.koin.androidApplication
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
