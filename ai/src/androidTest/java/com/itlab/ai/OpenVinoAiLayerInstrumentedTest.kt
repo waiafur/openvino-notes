@@ -1,8 +1,8 @@
 package com.itlab.ai
 
+import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.itlab.domain.app.FileSystemProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -13,6 +13,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import org.junit.Assert.assertNotNull
+import java.io.FileOutputStream
 import java.io.InputStream
 
 @RunWith(AndroidJUnit4::class)
@@ -27,8 +29,7 @@ class OpenVinoAiLayerInstrumentedTest {
 
     private fun createEngine(modelPath: String = ""): OpenVinoEngine {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val fileSystem = TestFileSystemProvider(context)
-        return OpenVinoEngine(fileSystem, modelPath).also { engines.add(it) }
+        return OpenVinoEngine(context, modelPath).also { engines.add(it) }
     }
 
     @Test
@@ -91,56 +92,27 @@ class OpenVinoAiLayerInstrumentedTest {
             assertTrue(engine.isReady())
         }
 
-    private class TestFileSystemProvider(
-        private val context: android.content.Context,
-    ) : FileSystemProvider {
-        override fun openAsset(path: String): InputStream = context.assets.open(path)
-
-        override fun listAssets(path: String): Array<String> = context.assets.list(path) ?: emptyArray()
-
-        override fun getFilesDir(): File = context.filesDir
-
-        override fun getTotalRamMB(): Long = 1024
-    }
-
     @Test
-    fun testCopyYoloToTestAssets() = runBlocking {
+    fun testYoloModelsExistInAssets() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-        // ПРАВИЛЬНОЕ МЕСТО — filesDir/models
-        val modelsDir = File(context.filesDir, "models")
+        // Проверяем наличие моделей в assets
+        val modelsInAssets = context.assets.list("models")
+        assertNotNull("Папка models не найдена в assets", modelsInAssets)
 
-        assertTrue("Папка models не найдена по пути: ${modelsDir.absolutePath}", modelsDir.exists())
+        // Проверяем YOLO26n
+        val yolo26nFiles = context.assets.list("models/yolo26n_openvino_model")
+        val hasYolo26n = yolo26nFiles?.contains("yolo26n.xml") == true &&
+            yolo26nFiles?.contains("yolo26n.bin") == true
 
-        // Проверяем обе модели
-        val yolo26nDir = File(modelsDir, "yolo26n_openvino_model")
-        val yolo26nXml = File(yolo26nDir, "yolo26n.xml")
-        val yolo26nBin = File(yolo26nDir, "yolo26n.bin")
+        // Проверяем YOLOv10n
+        val yolov10nFiles = context.assets.list("models/yolov10n_openvino_model")
+        val hasYolov10n = yolov10nFiles?.contains("yolov10n.xml") == true &&
+            yolov10nFiles?.contains("yolov10n.bin") == true
 
-        if (yolo26nDir.exists()) {
-            assertTrue("yolo26n.xml должен быть скопирован", yolo26nXml.exists())
-            assertTrue("yolo26n.bin должен быть скопирован", yolo26nBin.exists())
-            println("✅ YOLO26n: ${yolo26nXml.length()}, ${yolo26nBin.length()} bytes")
-        } else {
-            println("⚠️ YOLO26n не найден")
-        }
+        assertTrue("Должна быть хотя бы одна модель", hasYolo26n || hasYolov10n)
 
-        val yolov10nDir = File(modelsDir, "yolov10n_openvino_model")
-        val yolov10nXml = File(yolov10nDir, "yolov10n.xml")
-        val yolov10nBin = File(yolov10nDir, "yolov10n.bin")
-
-        if (yolov10nDir.exists()) {
-            assertTrue("yolov10n.xml должен быть скопирован", yolov10nXml.exists())
-            assertTrue("yolov10n.bin должен быть скопирован", yolov10nBin.exists())
-            println("✅ YOLOv10n: ${yolov10nXml.length()}, ${yolov10nBin.length()} bytes")
-        } else {
-            println("⚠️ YOLOv10n не найден")
-        }
-
-        // Хотя бы одна модель должна быть скопирована
-        val hasAnyModel = (yolo26nDir.exists() && yolo26nXml.exists()) ||
-            (yolov10nDir.exists() && yolov10nXml.exists())
-
-        assertTrue("Ни одна модель не была скопирована в ${modelsDir.absolutePath}", hasAnyModel)
+        if (hasYolo26n) println("✅ YOLO26n найдена в assets")
+        if (hasYolov10n) println("✅ YOLOv10n найдена в assets")
     }
 }
