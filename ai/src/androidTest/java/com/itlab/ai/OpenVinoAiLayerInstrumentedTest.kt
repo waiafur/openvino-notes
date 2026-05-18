@@ -102,4 +102,45 @@ class OpenVinoAiLayerInstrumentedTest {
 
         override fun getTotalRamMB(): Long = 1024
     }
+
+    @Test
+    fun testCopyYoloToTestAssets() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+
+        // ПРАВИЛЬНОЕ МЕСТО — filesDir/models
+        val modelsDir = File(context.filesDir, "models")
+
+        assertTrue("Папка models не найдена по пути: ${modelsDir.absolutePath}", modelsDir.exists())
+
+        // Проверяем обе модели
+        val yolo26nDir = File(modelsDir, "yolo26n_openvino_model")
+        val yolo26nXml = File(yolo26nDir, "yolo26n.xml")
+        val yolo26nBin = File(yolo26nDir, "yolo26n.bin")
+
+        if (yolo26nDir.exists()) {
+            assertTrue("yolo26n.xml должен быть скопирован", yolo26nXml.exists())
+            assertTrue("yolo26n.bin должен быть скопирован", yolo26nBin.exists())
+            println("✅ YOLO26n: ${yolo26nXml.length()}, ${yolo26nBin.length()} bytes")
+        } else {
+            println("⚠️ YOLO26n не найден")
+        }
+
+        val yolov10nDir = File(modelsDir, "yolov10n_openvino_model")
+        val yolov10nXml = File(yolov10nDir, "yolov10n.xml")
+        val yolov10nBin = File(yolov10nDir, "yolov10n.bin")
+
+        if (yolov10nDir.exists()) {
+            assertTrue("yolov10n.xml должен быть скопирован", yolov10nXml.exists())
+            assertTrue("yolov10n.bin должен быть скопирован", yolov10nBin.exists())
+            println("✅ YOLOv10n: ${yolov10nXml.length()}, ${yolov10nBin.length()} bytes")
+        } else {
+            println("⚠️ YOLOv10n не найден")
+        }
+
+        // Хотя бы одна модель должна быть скопирована
+        val hasAnyModel = (yolo26nDir.exists() && yolo26nXml.exists()) ||
+            (yolov10nDir.exists() && yolov10nXml.exists())
+
+        assertTrue("Ни одна модель не была скопирована в ${modelsDir.absolutePath}", hasAnyModel)
+    }
 }
