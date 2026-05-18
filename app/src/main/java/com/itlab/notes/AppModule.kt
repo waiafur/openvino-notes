@@ -1,4 +1,4 @@
-package com.itlab
+package com.itlab.notes
 
 import com.itlab.domain.usecase.folderusecase.CreateFolderUseCase
 import com.itlab.domain.usecase.folderusecase.DeleteFolderUseCase
@@ -19,12 +19,12 @@ import com.itlab.domain.usecase.noteusecase.UpdateNoteUseCase
 import com.itlab.domain.usecase.noteusecase.ValidateDuplicateNoteTitleUseCase
 import com.itlab.notes.auth.AppSessionPreferences
 import com.itlab.notes.auth.ClearLocalDataOnSignOut
+import com.itlab.notes.di.aiModule
 import com.itlab.notes.onboarding.OnboardingPreferences
 import com.itlab.notes.onboarding.OnboardingViewModel
 import com.itlab.notes.ui.NotesUseCases
 import com.itlab.notes.ui.NotesViewModel
 import com.itlab.notes.ui.auth.AuthViewModel
-import com.itlab.notes.aiModule
 import org.koin.android.ext.koin.androidApplication
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
