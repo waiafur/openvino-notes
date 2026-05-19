@@ -19,7 +19,7 @@ import com.itlab.domain.usecase.noteusecase.UpdateNoteUseCase
 import com.itlab.domain.usecase.noteusecase.ValidateDuplicateNoteTitleUseCase
 import com.itlab.notes.auth.AppSessionPreferences
 import com.itlab.notes.auth.ClearLocalDataOnSignOut
-import com.itlab.notes.di.aiModule
+import com.itlab.ai.di.aiModule
 import com.itlab.notes.onboarding.OnboardingPreferences
 import com.itlab.notes.onboarding.OnboardingViewModel
 import com.itlab.notes.ui.NotesUseCases
@@ -32,7 +32,6 @@ import org.koin.dsl.module
 
 val appModule =
     module {
-        includes(aiModule)
         single { OnboardingPreferences(androidApplication()) }
         single { AppSessionPreferences(androidApplication()) }
         factory { ValidateDuplicateNoteTitleUseCase(get()) }
