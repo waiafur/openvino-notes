@@ -22,7 +22,7 @@ MODELS = [
         "pt": "yolov10n.pt",
         "dir": "yolov10n_openvino_model",
         "files": ("yolov10n.xml", "yolov10n.bin", "metadata.yaml"),
-        "export_args": {"nms": True, "half": False}
+        "export_args": {}
     }
 ]
 

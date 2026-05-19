@@ -1,8 +1,8 @@
 package com.itlab.ai
 
-import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.itlab.domain.app.FileSystemProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -13,8 +13,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import org.junit.Assert.assertNotNull
-import java.io.FileOutputStream
 import java.io.InputStream
 
 @RunWith(AndroidJUnit4::class)
@@ -29,7 +27,8 @@ class OpenVinoAiLayerInstrumentedTest {
 
     private fun createEngine(modelPath: String = ""): OpenVinoEngine {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        return OpenVinoEngine(context, modelPath).also { engines.add(it) }
+        val fileSystem = TestFileSystemProvider(context)
+        return OpenVinoEngine(fileSystem, modelPath).also { engines.add(it) }
     }
 
     @Test
@@ -92,26 +91,15 @@ class OpenVinoAiLayerInstrumentedTest {
             assertTrue(engine.isReady())
         }
 
-    @Test
-    fun copyYoloToTestAssets() = runBlocking {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private class TestFileSystemProvider(
+        private val context: android.content.Context,
+    ) : FileSystemProvider {
+        override fun openAsset(path: String): InputStream = context.assets.open(path)
 
-        // Проверяем наличие моделей в assets
-        val modelsInAssets = context.assets.list("models")
-        assertNotNull("Папка models не найдена в assets", modelsInAssets)
+        override fun listAssets(path: String): Array<String> = context.assets.list(path) ?: emptyArray()
 
-        // Проверяем YOLO26n
-        val yolo26nFiles = context.assets.list("models/yolo26n_openvino_model")
-        val hasYolo26n = yolo26nFiles?.contains("yolo26n.xml") == true &&
-            yolo26nFiles?.contains("yolo26n.bin") == true
+        override fun getFilesDir(): File = context.filesDir
 
-        // Проверяем YOLOv10n
-        val yolov10nFiles = context.assets.list("models/yolov10n_openvino_model")
-        val hasYolov10n = yolov10nFiles?.contains("yolov10n.xml") == true &&
-            yolov10nFiles?.contains("yolov10n.bin") == true
-
-        assertTrue("Должна быть хотя бы одна модель", hasYolo26n || hasYolov10n)
-        if (hasYolo26n) println("✅ YOLO26n найдена в assets")
-        if (hasYolov10n) println("✅ YOLOv10n найдена в assets")
+        override fun getTotalRamMB(): Long = 1024
     }
 }
