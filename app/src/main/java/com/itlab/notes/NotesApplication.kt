@@ -2,7 +2,7 @@ package com.itlab.notes
 
 import android.app.Application
 import com.itlab.data.di.dataModule
-import com.itlab.notes.di.aiModule
+import com.itlab.ai.di.aiModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.workmanager.koin.workManagerFactory
 import org.koin.core.context.startKoin
