@@ -43,7 +43,7 @@ class OpenVinoEngine(
             activityManager.getMemoryInfo(memInfo)
             val totalRamMB = memInfo.totalMem / (1024 * 1024)
 
-            return if (coreCount >= 4 || totalRamMB >= 2048) {
+            return if (coreCount <= 4 || totalRamMB <= 2048) {
                 "models/yolo26n_openvino_model/yolo26n.xml"
             } else {
                 "models/yolov10n_openvino_model/yolov10n.xml"
@@ -340,19 +340,11 @@ class OpenVinoEngine(
         val resolvedModelXmlPath = resolveModelXmlPath() ?: return false
         activeModelXmlPath = resolvedModelXmlPath
 
-        return if (!isModelExists(activeModelXmlPath)) {
+        return if (!File(activeModelXmlPath).exists()) {
             Log.e(TAG, "Model file not found: $activeModelXmlPath")
             false
         } else {
             initializeOpenVino()
-        }
-    }
-    private fun isModelExists(modelPath: String): Boolean {
-        return try {
-            context.assets.open(modelPath).close()
-            true
-        } catch (e: IOException) {
-            false
         }
     }
 
