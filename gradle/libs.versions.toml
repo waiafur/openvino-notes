@@ -31,6 +31,7 @@ koin = "4.2.1"
 coilCompose = "2.7.0"
 datastore = "1.1.7"
 playServicesAuth = "20.7.0"
+coreKtxVersion = "1.7.0"
 
 [libraries]
 mockk-agent-jvm = { group = "io.mockk", name = "mockk-agent-jvm", version.ref = "mockk" }
@@ -86,6 +87,7 @@ androidx-work-testing = { group = "androidx.work", name = "work-testing", versio
 koin-test = { group = "io.insert-koin", name = "koin-test", version.ref = "koin" }
 koin-test-junit4 = { group = "io.insert-koin", name = "koin-test-junit4", version.ref = "koin" }
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "coreKtxVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

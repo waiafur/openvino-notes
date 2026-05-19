@@ -1,5 +1,6 @@
 package com.itlab.ai
 
+import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -35,7 +36,8 @@ class OpenVinoAiLayerTest {
     @Test
     fun summarize_returnsTrimmedSummary() =
         runBlocking {
-            val service = OpenVinoNoteAiService(OpenVinoEngine(), ResultProcessor())
+            val service =
+                OpenVinoNoteAiService(OpenVinoEngine(ApplicationProvider.getApplicationContext()), ResultProcessor())
 
             val result = service.summarize("  Summary text  ")
 
@@ -45,7 +47,8 @@ class OpenVinoAiLayerTest {
     @Test
     fun tagTXT_normalizesCaseAndSeparators() =
         runBlocking {
-            val service = OpenVinoNoteAiService(OpenVinoEngine(), ResultProcessor())
+            val service =
+                OpenVinoNoteAiService(OpenVinoEngine(ApplicationProvider.getApplicationContext()), ResultProcessor())
 
             val result = service.tagTXT(" Kotlin, Notes\nAI ")
 
@@ -55,7 +58,8 @@ class OpenVinoAiLayerTest {
     @Test
     fun tagIMGs_aggregatesAndDeduplicatesTags() =
         runBlocking {
-            val service = OpenVinoNoteAiService(OpenVinoEngine(), ResultProcessor())
+            val service =
+                OpenVinoNoteAiService(OpenVinoEngine(ApplicationProvider.getApplicationContext()), ResultProcessor())
 
             val result = service.tagIMGs(listOf("Cat, Pet", "pet, animal", "  CAT"))
 

@@ -2,7 +2,6 @@ package com.itlab.ai
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.itlab.domain.app.FileSystemProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -13,7 +12,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.io.InputStream
 
 @RunWith(AndroidJUnit4::class)
 class OpenVinoAiLayerInstrumentedTest {
@@ -27,8 +25,7 @@ class OpenVinoAiLayerInstrumentedTest {
 
     private fun createEngine(modelPath: String = ""): OpenVinoEngine {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val fileSystem = TestFileSystemProvider(context)
-        return OpenVinoEngine(fileSystem, modelPath).also { engines.add(it) }
+        return OpenVinoEngine(context, modelPath).also { engines.add(it) }
     }
 
     @Test
@@ -90,16 +87,4 @@ class OpenVinoAiLayerInstrumentedTest {
             assertTrue(initialized)
             assertTrue(engine.isReady())
         }
-
-    private class TestFileSystemProvider(
-        private val context: android.content.Context,
-    ) : FileSystemProvider {
-        override fun openAsset(path: String): InputStream = context.assets.open(path)
-
-        override fun listAssets(path: String): Array<String> = context.assets.list(path) ?: emptyArray()
-
-        override fun getFilesDir(): File = context.filesDir
-
-        override fun getTotalRamMB(): Long = 1024
-    }
 }
