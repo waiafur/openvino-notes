@@ -16,7 +16,6 @@ local.properties
 .idea/
 /ai/libs/
 /ai/src/main/jniLibs/arm64-v8a/
-/ai/src/main/assets/
 keystore.properties
 *.jks
 **/ci-release-signing.jks
