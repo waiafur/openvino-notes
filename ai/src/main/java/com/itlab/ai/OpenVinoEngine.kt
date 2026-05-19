@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.graphics.scale
-import com.itlab.domain.app.FileSystemProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.intel.openvino.CompiledModel
@@ -17,10 +16,11 @@ import org.intel.openvino.Tensor
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import android.app.ActivityManager
 
 @Suppress("TooGenericExceptionCaught", "TooManyFunctions")
 class OpenVinoEngine(
-    private val fileSystem: FileSystemProvider,
+    private val context: Context,
     private val modelXmlPath: String = "",
     private val deviceName: String = "CPU",
 ) {
@@ -35,6 +35,20 @@ class OpenVinoEngine(
         private const val CONF_THRESHOLD = 0.35f
         private const val IOU_THRESHOLD = 0.45f
         private const val MAX_DETECTIONS = 300
+
+        fun getOptimalModelPath(context: Context): String {
+            val coreCount = Runtime.getRuntime().availableProcessors()
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memInfo)
+            val totalRamMB = memInfo.totalMem / (1024 * 1024)
+
+            return if (coreCount <= 4 || totalRamMB <= 2048) {
+                "models/yolo26n_openvino_model/yolo26n.xml"
+            } else {
+                "models/yolov10n_openvino_model/yolov10n.xml"
+            }
+        }
     }
 
     private var core: Core? = null
@@ -123,17 +137,6 @@ class OpenVinoEngine(
         }
     }
 
-    @Suppress("UnusedPrivateMember")
-    private fun getOptimalModelPath(): String {
-        val coreCount = Runtime.getRuntime().availableProcessors()
-        val totalRam = fileSystem.getTotalRamMB()
-
-        return if (coreCount >= 4 && totalRam >= 2048) {
-            "models/yolo26n_openvino_model/yolo26n.xml"
-        } else {
-            "models/yolov10n_openvino_model/yolov10n.xml"
-        }
-    }
 
     private fun loadClassNames(appContext: Context): List<String> =
         try {
@@ -309,67 +312,50 @@ class OpenVinoEngine(
         return if (union > 0) intersection / union else 0f
     }
 
-    suspend fun initialize(): Boolean =
-        withContext(Dispatchers.Default) {
-            debugLog { "Initializing OpenVINO Engine..." }
+    suspend fun initialize(): Boolean = withContext(Dispatchers.Default) {
+        debugLog { "Initializing OpenVINO Engine..." }
+        isInitialized = false
 
-            isInitialized = false
-
-            val fs = fileSystem
-            return@withContext when {
-                fs == null -> {
-                    Log.e(TAG, "FileSystemProvider is required to initialize OpenVINO")
-                    false
-                }
-                else -> {
-                    classNames = loadClassNames(fs)
-                    if (classNames.isEmpty()) {
-                        Log.w(TAG, "No class names loaded, using IDs instead")
-                    }
-                    val result = initializeWithResolvedModel(fs)
-                    debugLog { "Resolved model path: $activeModelXmlPath" }
-                    result
-                }
-            }
+        classNames = loadClassNames()
+        if (classNames.isEmpty()) {
+            Log.w(TAG, "No class names loaded, using IDs instead")
         }
+        val result = initializeWithResolvedModel()
+        debugLog { "Resolved model path: $activeModelXmlPath" }
+        result
+    }
 
-    private fun loadClassNames(fs: FileSystemProvider): List<String> =
-        try {
-            val names = mutableListOf<String>()
-            fs.openAsset(COCO_NAMES_FILE).bufferedReader().useLines { lines ->
-                lines.forEach { line ->
-                    if (line.isNotBlank()) {
-                        names.add(line.trim())
-                    }
-                }
+    private fun loadClassNames(): List<String> {
+        return try {
+            context.assets.open(COCO_NAMES_FILE).bufferedReader().useLines { lines ->
+                lines.filter { it.isNotBlank() }.map { it.trim() }.toList()
             }
-            debugLog { "Loaded ${names.size} classes from $COCO_NAMES_FILE" }
-            names
         } catch (e: IOException) {
-            Log.e(TAG, "Failed to load $COCO_NAMES_FILE", e)
+            Log.e(TAG, "Failed to load class names", e)
             emptyList()
         }
+    }
 
-    private fun initializeWithResolvedModel(fs: FileSystemProvider): Boolean {
-        val resolvedModelXmlPath = resolveModelXmlPath(fs) ?: return false
+    private fun initializeWithResolvedModel(): Boolean {
+        val resolvedModelXmlPath = resolveModelXmlPath() ?: return false
         activeModelXmlPath = resolvedModelXmlPath
 
         return if (!File(activeModelXmlPath).exists()) {
             Log.e(TAG, "Model file not found: $activeModelXmlPath")
             false
         } else {
-            initializeOpenVino(fs)
+            initializeOpenVino()
         }
     }
 
-    private fun resolveModelXmlPath(fs: FileSystemProvider): String? {
-        val modelDir = File(fs.getFilesDir(), DEFAULT_MODEL_ASSET_DIR)
+    private fun resolveModelXmlPath(): String? {
+        val modelDir = File(context.filesDir, DEFAULT_MODEL_ASSET_DIR)
         val modelXml = File(modelDir, DEFAULT_MODEL_XML)
 
         return when {
             modelXmlPath.isNotBlank() -> modelXmlPath
             modelXml.exists() -> modelXml.absolutePath
-            copyAssetDirectory(fs, DEFAULT_MODEL_ASSET_DIR, modelDir) -> modelXml.absolutePath
+            copyAssetDirectory(DEFAULT_MODEL_ASSET_DIR, modelDir) -> modelXml.absolutePath
             else -> {
                 Log.e(TAG, "Bundled model assets are missing: $DEFAULT_MODEL_ASSET_DIR")
                 null
@@ -377,37 +363,27 @@ class OpenVinoEngine(
         }
     }
 
-    private fun copyAssetDirectory(
-        fs: FileSystemProvider,
-        assetPath: String,
-        targetDir: File,
-    ): Boolean {
-        val entries = fs.listAssets(assetPath).orEmpty()
-        if (entries.isEmpty()) {
-            return false
-        }
+    private fun copyAssetDirectory(assetPath: String, targetDir: File): Boolean {
+        val entries = context.assets.list(assetPath) ?: return false
+        if (entries.isEmpty()) return false
 
         targetDir.mkdirs()
         return entries.all { entry ->
             val childAssetPath = "$assetPath/$entry"
             val childTarget = File(targetDir, entry)
-            val childEntries = fs.listAssets(childAssetPath).orEmpty()
+            val childEntries = context.assets.list(childAssetPath) ?: emptyArray()
             if (childEntries.isEmpty()) {
-                copyAssetFile(fs, childAssetPath, childTarget)
+                copyAssetFile(childAssetPath, childTarget)
             } else {
-                copyAssetDirectory(fs, childAssetPath, childTarget)
+                copyAssetDirectory(childAssetPath, childTarget)
             }
         }
     }
 
-    private fun copyAssetFile(
-        fs: FileSystemProvider,
-        assetPath: String,
-        targetFile: File,
-    ): Boolean =
-        try {
+    private fun copyAssetFile(assetPath: String, targetFile: File): Boolean {
+        return try {
             targetFile.parentFile?.mkdirs()
-            fs.openAsset(assetPath).use { input ->
+            context.assets.open(assetPath).use { input ->
                 FileOutputStream(targetFile).use { output ->
                     input.copyTo(output)
                 }
@@ -417,10 +393,11 @@ class OpenVinoEngine(
             Log.e(TAG, "Failed to copy asset: $assetPath", e)
             false
         }
+    }
 
-    private fun initializeOpenVino(fs: FileSystemProvider): Boolean =
-        try {
-            val pluginsFile = preparePluginsFile(fs)
+    private fun initializeOpenVino(): Boolean {
+        return try {
+            val pluginsFile = preparePluginsFile()
             val activeCore = createCore(pluginsFile)
             val devices = activeCore.get_available_devices()
             debugLog { "Available devices: $devices" }
@@ -438,21 +415,19 @@ class OpenVinoEngine(
             Log.e(TAG, "Failed to initialize engine: ${e.message}", e)
             false
         }
+    }
 
-    private fun preparePluginsFile(fs: FileSystemProvider): File {
-        val pluginsFile = File(fs.getFilesDir(), "plugins.xml")
+    private fun preparePluginsFile(): File {
+        val pluginsFile = File(context.filesDir, "plugins.xml")
         if (!pluginsFile.exists()) {
-            copyPluginsFile(fs, pluginsFile)
+            copyPluginsFile(pluginsFile)
         }
         return pluginsFile
     }
 
-    private fun copyPluginsFile(
-        fs: FileSystemProvider,
-        pluginsFile: File,
-    ) {
+    private fun copyPluginsFile(pluginsFile: File) {
         try {
-            fs.openAsset("plugins.xml").use { input ->
+            context.assets.open("plugins.xml").use { input ->
                 FileOutputStream(pluginsFile).use { output ->
                     input.copyTo(output)
                 }

@@ -1,6 +1,5 @@
-package com.itlab
+package com.itlab.notes
 
-import com.itlab.domain.app.FileSystemProvider
 import com.itlab.domain.usecase.folderusecase.CreateFolderUseCase
 import com.itlab.domain.usecase.folderusecase.DeleteFolderUseCase
 import com.itlab.domain.usecase.folderusecase.GetFolderUseCase
@@ -18,22 +17,22 @@ import com.itlab.domain.usecase.noteusecase.SearchNotesUseCase
 import com.itlab.domain.usecase.noteusecase.SwitchFavoriteUseCase
 import com.itlab.domain.usecase.noteusecase.UpdateNoteUseCase
 import com.itlab.domain.usecase.noteusecase.ValidateDuplicateNoteTitleUseCase
-import com.itlab.notes.AndroidFileSystemProvider
 import com.itlab.notes.auth.AppSessionPreferences
 import com.itlab.notes.auth.ClearLocalDataOnSignOut
+import com.itlab.notes.di.aiModule
 import com.itlab.notes.onboarding.OnboardingPreferences
 import com.itlab.notes.onboarding.OnboardingViewModel
 import com.itlab.notes.ui.NotesUseCases
 import com.itlab.notes.ui.NotesViewModel
 import com.itlab.notes.ui.auth.AuthViewModel
 import org.koin.android.ext.koin.androidApplication
-import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule =
     module {
+        includes(aiModule)
         single { OnboardingPreferences(androidApplication()) }
         single { AppSessionPreferences(androidApplication()) }
         factory { ValidateDuplicateNoteTitleUseCase(get()) }
@@ -82,9 +81,6 @@ val appModule =
                 getAllFavoritesUseCase = get(),
                 getNoteUseCase = get(),
             )
-        }
-        single<FileSystemProvider> {
-            AndroidFileSystemProvider(androidContext())
         }
 
         viewModelOf(::NotesViewModel)
